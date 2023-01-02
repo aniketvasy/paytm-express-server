@@ -156,6 +156,72 @@ app.post("/payment",(req,res)=>{
   });
 })
 
+app.post("/status",(req,res)=>{
+  let paytmParams = {};
+  let mid = req.body.mid;
+  let orderId = req.body.orderId;
+  let mkey = req.body.mkey;
+
+/* body parameters */
+paytmParams.body = {
+
+    /* Find your MID in your Paytm Dashboard at https://dashboard.paytm.com/next/apikeys */
+    "mid" : `${mid}`,
+
+    /* Enter your order id which needs to be check status for */
+    "orderId": `${orderId}`,
+};
+console.log("recived data for status",`${mid}`,"P0P ",JSON.stringify(paytmParams.body))
+/**
+* Generate checksum by parameters we have in body
+* Find your Merchant Key in your Paytm Dashboard at https://dashboard.paytm.com/next/apikeys 
+*/
+PaytmChecksum.generateSignature(JSON.stringify(paytmParams.body), mkey).then(function(checksum){
+    /* head parameters */
+    paytmParams.head = {
+        /* put generated checksum value here */
+        "signature"	:`${checksum}`
+    };
+
+    /* prepare JSON string for request */
+    var post_data = JSON.stringify(paytmParams);
+
+    var options = {
+
+        /* for Staging */
+        hostname: 'securegw-stage.paytm.in',
+
+        /* for Production */
+        // hostname: 'securegw.paytm.in',
+
+        port: 443,
+        path: '/v3/order/status',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': post_data.length
+        }
+    };
+
+    // Set up the request
+    var response = "";
+    var post_req = https.request(options, function(post_res) {
+        post_res.on('data', function (chunk) {
+            response += chunk;
+        });
+
+        post_res.on('end', function(){
+            console.log('Response: ', response);
+            res.json(JSON.parse(response))
+        });
+    });
+
+    // post the data
+    post_req.write(post_data);
+    post_req.end();
+});
+})
+
 app.listen(PORT, () => {
   // this will open server s
   console.log(`listing on port ${process.env.PORT}`);
